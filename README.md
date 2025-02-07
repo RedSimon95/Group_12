@@ -3,3 +3,4 @@ L'obiettivo di questo progetto consiste nel sviluppare un modello di apprendimen
 (Si effettua una nuova commit al fine di verificare il corretto funzionamento di github)
 
 aggiunta riga Dario (verifica aggiunta su github)
+aggiunta riga Luca (verifica aggiunta su github)
