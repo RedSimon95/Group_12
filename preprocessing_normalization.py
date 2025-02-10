@@ -30,7 +30,7 @@ with open("output_log.txt", "w") as log_file:
 
     # Rimuovere le colonne 1, 3, 8
     df.drop(df.columns[[1, 3, 8]], axis=1, inplace=True)
-    
+
     # Separare la colonna classtype
     classtype_col = df.iloc[:, -1]
     df = df.iloc[:, :-1]
@@ -61,4 +61,3 @@ with open("output_log.txt", "w") as log_file:
 
     # Stampare un messaggio di conferma
     print("Il dataset è stato pulito e salvato in due file separati: output_features.csv e output_classtype.csv.")
-   
