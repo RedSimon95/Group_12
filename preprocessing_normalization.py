@@ -4,7 +4,7 @@ import pandas as pd
 # Caricare il dataset
 df = pd.read_csv('dataset.csv')
 
-# Sostituire i '?' con NaN
+# Sostituisci il carattere '?' con NaN
 df.replace('?', np.nan, inplace=True)
 
 # Convertire tutte le colonne in numeriche, sostituendo errori con NaN
@@ -24,16 +24,15 @@ with open("output_log.txt", "w") as log_file:
     # Rimuovere le righe con NaN nella terz'ultima colonna (classtype)
     df = df[~df.iloc[:, -3].isna()]
 
-    # Stampare il numero di righe dopo la pulizia
+    # Stampa n.righe dopo la pulizia
     log_file.write(f"Righe dopo la rimozione dei NaN nella terz'ultima colonna: {df.shape[0]}\n")
-    print(f"Righe dopo la rimozione dei NaN nella terz'ultima colonna: {df.shape[0]}")
+    print(f"Righe rimanenti dopo aver rimosso i valori NaN dalla terz'ultima colonna: {df.shape[0]}")
 
     # Rimuovere le colonne 1, 3, 8
     df.drop(df.columns[[1, 3, 8]], axis=1, inplace=True)
 
     # Separare la colonna classtype
-    classtype_col = df.iloc[:, -1]
-    df = df.iloc[:, :-1]
+    classtype_col, df = df.iloc[:, -1], df.iloc[:, :-1]
 
     # Funzione per riempire i NaN con la media della colonna
     def fill_with_mean(col):
