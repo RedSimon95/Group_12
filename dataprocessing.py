@@ -3,7 +3,7 @@ import numpy as np
 
 class DataProcessor:
     """
-    Classe per il preprocessing del dataset: gestione dei valori mancanti, normalizzazione e salvataggio.
+    Classe per il preprocessing del dataset: gestione dei valori mancanti, normalizzazione e salvataggio del file elaborato.
     """
     def __init__(self, file_path, output_features="processed_features.csv", output_target="processed_target.csv"):
         self.file_path = file_path
@@ -39,8 +39,8 @@ class DataProcessor:
         """Salva features e target in file separati."""
         self.features.to_csv(self.output_features, index=False)
         self.target.to_csv(self.output_target, index=False)
-        print(f"📊 Features salvate in {self.output_features}")
-        print(f"📊 Target salvato in {self.output_target}")
+        print(f"Features salvate in {self.output_features}")
+        print(f"Target salvato in {self.output_target}")
 
     def process(self):
         """Esegue tutti i passaggi di preprocessing."""
