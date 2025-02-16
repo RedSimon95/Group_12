@@ -18,8 +18,7 @@ class ModelEvaluator:
         self.X = np.array(X)
         self.y = np.array(y).flatten()
         self.logs = []  # Creo struttura per il logging , utile per i successivi metodi che verranno
-      
-    
+        
     def holdout(self, test_size=0.2):
         """
         Divide i dati in training e test set secondo la percentuale specificata e valuta il modello.
