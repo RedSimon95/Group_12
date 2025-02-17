@@ -19,24 +19,45 @@ class ModelEvaluator:
         self.y = np.array(y).flatten()
         self.logs = []  # Creo struttura per il logging , utile per i successivi metodi che verranno
         
-    def holdout(self, test_size=0.2):
+    def holdout(self, test_size=0.2): 
         """
         Divide i dati in training e test set secondo la percentuale specificata e valuta il modello.
+        :param test_size: La frazione dei dati da utilizzare come test set. Default è 0.2 (20% per il test, 80% per il training).
+        :return: I risultati della valutazione del modello (metriche).
         """
+        
+        # Calcola la dimensione del test set in base alla percentuale fornita
         n_test = int(len(self.X) * test_size)
+        
+        # Crea un array di indici casuali 
         indices = np.random.permutation(len(self.X))
+        
+        # Separa gli indici in test e training se
         test_indices, train_indices = indices[:n_test], indices[n_test:]
         
+        # Utilizza gli indici per dividere X (features) e y (target) in training e test set
         X_train, X_test = self.X[train_indices], self.X[test_indices]
         y_train, y_test = self.y[train_indices], self.y[test_indices]
         
+        # Allena il modello sui dati di training
         self.model.fit(X_train, y_train)
+        
+        # Predice i valori sul test set
         y_pred = self.model.predict(X_test)
         
+        # Calcola le metriche di performance confrontando i valori predetti con quelli reali
         results = self.compute_metrics(y_test, y_pred)
+        
+        # Registra i risultati nel log, associando il metodo di valutazione
         self.logs.append({"Method": "Holdout", **results})
+        
+        # Aggiorna la matrice di confusione con i risultati attuali
         self._update_confusion_matrix(y_test, y_pred)
+        
+        # Plotta la matrice di confusione
         self._plot_confusion_matrix()
+        
+        # Restituisce i risultati ottenuti dalle metriche
         return results
         
     def compute_metrics(self, y_true, y_pred):
