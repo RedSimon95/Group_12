@@ -38,3 +38,35 @@ class ModelEvaluator:
         self._update_confusion_matrix(y_test, y_pred)
         self._plot_confusion_matrix()
         return results
+        
+    def compute_metrics(self, y_true, y_pred):
+        """Calcola le metriche di valutazione."""
+        
+        # Calcolo dei veri positivi (TP): casi in cui il valore reale e la predizione sono entrambi 4
+        tp = np.sum((y_true == 4) & (y_pred == 4))
+        # Calcolo dei veri negativi (TN): casi in cui il valore reale e la predizione sono entrambi 2
+        tn = np.sum((y_true == 2) & (y_pred == 2))
+        # Calcolo dei falsi positivi (FP): casi in cui il valore reale è 2 ma la predizione è 4
+        fp = np.sum((y_true == 2) & (y_pred == 4))
+        # Calcolo dei falsi negativi (FN): casi in cui il valore reale è 4 ma la predizione è 2
+        fn = np.sum((y_true == 4) & (y_pred == 2))
+        
+        # Accuratezza: proporzione di previsioni corrette rispetto al totale dei campioni
+        accuracy = (tp + tn) / len(y_true)
+        # Tasso di errore: complemento dell'accuratezza
+        error_rate = 1 - accuracy
+        # Sensibilità (Recall o True Positive Rate): capacità del modello di identificare correttamente i positivi
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+        # Specificità (True Negative Rate): capacità del modello di identificare correttamente i negativi
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+        # Media geometrica della sensibilità e specificità, utile per dataset sbilanciati
+        geometric_mean = np.sqrt(sensitivity * specificity)
+        
+        # Restituisce un dizionario con tutte le metriche calcolate
+        return {
+            "Accuracy": accuracy,
+            "Error Rate": error_rate,
+            "Sensitivity": sensitivity,
+            "Specificity": specificity,
+            "Geometric Mean": geometric_mean
+        }
