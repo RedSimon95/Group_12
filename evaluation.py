@@ -91,24 +91,7 @@ class ModelEvaluator:
             "Specificity": specificity,
             "Geometric Mean": geometric_mean
         }
-    import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-class ModelEvaluator:
-    def __init__(self, model, X, y):
-        """
-        Inizializza l'oggetto con il modello di Machine Learning e i dati.
-        :param model: Modello di classificazione (ad es. Decision Tree, SVM, MLP...)
-        :param X: Feature matrix (numpy array)
-        :param y: Target labels (numpy array)
-        """
-        self.model = model
-        self.X = X
-        self.y = y
-        self.global_conf_matrix = np.zeros((2, 2), dtype=int)  # Matrice 2x2 inizializzata a zero
-        self.logs = []  # Lista per salvare i risultati di ogni fold
-
+    
     def _update_confusion_matrix(self, y_true, y_pred):
         """
         Aggiorna la Confusion Matrix cumulativa sulla base delle nuove predizioni.
