@@ -91,7 +91,24 @@ class ModelEvaluator:
             "Specificity": specificity,
             "Geometric Mean": geometric_mean
         }
-    
+    import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+class ModelEvaluator:
+    def __init__(self, model, X, y):
+        """
+        Inizializza l'oggetto con il modello di Machine Learning e i dati.
+        :param model: Modello di classificazione (ad es. Decision Tree, SVM, MLP...)
+        :param X: Feature matrix (numpy array)
+        :param y: Target labels (numpy array)
+        """
+        self.model = model
+        self.X = X
+        self.y = y
+        self.global_conf_matrix = np.zeros((2, 2), dtype=int)  # Matrice 2x2 inizializzata a zero
+        self.logs = []  # Lista per salvare i risultati di ogni fold
+
     def _update_confusion_matrix(self, y_true, y_pred):
         """
         Aggiorna la Confusion Matrix cumulativa sulla base delle nuove predizioni.
@@ -155,32 +172,36 @@ class ModelEvaluator:
         self._plot_confusion_matrix()
         
         return results  # Restituisce i risultati dell'ultima fold
-
     
     def stratified_shuffle_split(self, test_size=0.2, n_splits=5):
         """
-        Esegue Stratified Shuffle Split e aggiorna la Confusion Matrix cumulativa.
+        Esegue Stratified Shuffle Split per suddividere i dati in training e test set 
+        in modo stratificato, aggiornando la Confusion Matrix cumulativa.
+        
+        Parametri:
+        test_size (float): Percentuale di dati da destinare al test set.
+        n_splits (int): Numero di suddivisioni da effettuare.
         """
         for i in range(n_splits):
-            indices = np.random.permutation(len(self.X))
-            n_test = int(len(self.X) * test_size)
-            test_indices, train_indices = indices[:n_test], indices[n_test:]
+            indices = np.random.permutation(len(self.X))  # Genera una permutazione casuale degli indici
+            n_test = int(len(self.X) * test_size)  # Calcola la dimensione del test set
+            test_indices, train_indices = indices[:n_test], indices[n_test:]  # Divide gli indici in training e test
             
-            X_train, X_test = self.X[train_indices], self.X[test_indices]
-            y_train, y_test = self.y[train_indices], self.y[test_indices]
+            X_train, X_test = self.X[train_indices], self.X[test_indices]  # Separa i dati
+            y_train, y_test = self.y[train_indices], self.y[test_indices]  # Separa le etichette
             
-            self.model.fit(X_train, y_train)
-            y_pred = self.model.predict(X_test)
+            self.model.fit(X_train, y_train)  # Allena il modello sui dati di training
+            y_pred = self.model.predict(X_test)  # Effettua le predizioni sul test set
             
-            results = self.compute_metrics(y_test, y_pred)
-            self.logs.append({"Method": f"Stratified Shuffle {i+1}/{n_splits}", **results})
-            self._update_confusion_matrix(y_test, y_pred)
+            results = self.compute_metrics(y_test, y_pred)  # Calcola le metriche di valutazione
+            self.logs.append({"Method": f"Stratified Shuffle {i+1}/{n_splits}", **results})  # Salva i risultati
+            self._update_confusion_matrix(y_test, y_pred)  # Aggiorna la Confusion Matrix cumulativa
         
-        self._plot_confusion_matrix()
+        self._plot_confusion_matrix()  # Visualizza la Confusion Matrix finale
         return results
     
     def save_logs(self, filename="evaluation_logs.xlsx"):
         """Salva i risultati di tutte le valutazioni in un file Excel."""
         df_logs = pd.DataFrame(self.logs)
-        df_logs.to_excel(filename, index=False)
+        df_logs.to_excel(filename, index=False)  # Esporta i log in un file Excel
         print(f"📊 Log delle valutazioni salvato in {filename}")
