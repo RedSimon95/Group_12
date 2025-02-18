@@ -1,7 +1,6 @@
 import numpy as np
 
 class KNNClassifier:
-    """Implementazione di un classificatore k-NN da zero."""
     
     def __init__(self, k=3):
         self.k = k
