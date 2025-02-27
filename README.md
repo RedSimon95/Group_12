@@ -6,4 +6,13 @@ Innanzitutto, il dataset viene caricato utilizzando una strategia specifica in b
 
 Successivamente, alcune colonne non necessarie ai fini del progetto vengono rimosse. Una volta ripuliti, i dati vengono suddivisi in due parti: le features e la colonna delle classi, che rappresenta le classi da prevedere. Le feature vengono poi normalizzate, scalando i valori tra 0 e 1, per garantire che abbiano lo stesso peso durante l’addestramento del modello.
 
-Infine, il dataset processato viene salvato in due file separati, uno per le feature e uno per le classi, rendendolo pronto per essere utilizzato nei modelli di machine learning.
+Infine, il dataset processato viene salvato in due file separati, uno per le feature e uno per le classi, rendendolo pronto per essere utilizzato nei modelli di machine learning.
+
+Il file model.py implementa il metodo del k-NN, un algoritmo basato sulla distanza euclidea tra oggetti, i quali tendono a trovarsi vicini nello spazio delle feature se presentano caratteristiche simili.
+
+L'algoritmo calcola la distanza tra il punto da classificare e tutti i punti noti, seleziona i k più vicini e assegna la classe più frequente tra essi. Questo codice implementa il k-NN utilizzando un approccio modulare.
+
+La classe astratta Classifier definisce un'interfaccia comune, mentre la classe KNNClassifier fornisce una specifica implementazione dell'algoritmo. Il metodo train() memorizza il dataset di addestramento, mentre predict() calcola le distanze tra i punti di test e quelli di training, selezionando i più vicini per determinare la classe.
+
+Per garantire il corretto funzionamento, è presente una funzione di test test_knn_classifier(), che confronta le predizioni del modello con i valori attesi. Se le previsioni sono corrette, il test viene superato.
+
