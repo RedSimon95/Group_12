@@ -32,10 +32,11 @@ class KNNClassifier(Classifier):
             # Trova gli indici dei k punti più vicini
             nearest_indices = np.argsort(distances)[:self.k]
             # Prende le etichette dei k punti più vicini
-            nearest_labels = self.y_train[nearest_indices]
+            nearest_labels = self.y_train[nearest_indices].astype(int)  # Converte le etichette in int
             # Prende l'etichetta più comune tra i k punti più vicini
             predictions.append(np.bincount(nearest_labels).argmax())
         return np.array(predictions)
+
 
 # Factory per creare il classificatore
 class ClassifierFactory:
