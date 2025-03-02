@@ -16,8 +16,14 @@ La classe astratta Classifier definisce un'interfaccia comune, mentre la classe 
 
 Per garantire il corretto funzionamento, è presente una funzione di test test_knn_classifier(), che confronta le predizioni del modello con i valori attesi. Se le previsioni sono corrette, il test viene superato.
 
-validation.py implementa e testa diverse strategie di validazione dei modelli di machine learning, come la validazione Holdout, K-Fold e Stratified Shuffle Split.
+Validation.py implementa e testa diverse strategie di validazione dei modelli di machine learning, come la validazione Holdout, K-Fold e Stratified Shuffle Split.
 
 Ogni strategia ha un comportamento diverso: la validazione Holdout separa i dati in due set, uno per l'addestramento e l'altro per il test, con un mescolamento casuale; la validazione K-Fold suddivide il dataset in k fold, eseguendo una validazione incrociata; mentre la validazione Stratified Shuffle Split preserva la distribuzione delle classi tra i due set.
 
-Un'apposita factory consente di scegliere facilmente la strategia desiderata, e la funzione di test verifica che ogni strategia funzioni correttamente su un piccolo esempio di dati.
+Un'apposita factory consente di scegliere facilmente la strategia desiderata, e la funzione di test verifica che ogni strategia funzioni correttamente su un piccolo esempio di dati.
+
+Nel file main.py l'utente interagisce con il terminale fornendo il numero di vicini (k), il metodo di valutazione e la percentuale di test.
+
+Una volta terminata l'analisi l'utente ha la possibilità di terminare l'esecuzione o ripeterla ancora. 
+
+Una volta completata, vengono salvati i risultati delle metriche in un file CSV dove possono essere visualizzati.
