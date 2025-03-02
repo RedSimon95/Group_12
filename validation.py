@@ -11,6 +11,47 @@ class ValidationStrategy(ABC):
     def split_data(self, X, y):
         pass
 
+    def compute_confusion_matrix(self, y_true, y_pred):
+        """Calcola la matrice di confusione."""
+        # Calcolo dei veri positivi (TP): casi in cui il valore reale e la predizione sono entrambi 4
+        tp = np.sum((y_true == 4) & (y_pred == 4))
+        # Calcolo dei veri negativi (TN): casi in cui il valore reale e la predizione sono entrambi 2
+        tn = np.sum((y_true == 2) & (y_pred == 2))
+        # Calcolo dei falsi positivi (FP): casi in cui il valore reale è 2 ma la predizione è 4
+        fp = np.sum((y_true == 2) & (y_pred == 4))
+        # Calcolo dei falsi negativi (FN): casi in cui il valore reale è 4 ma la predizione è 2
+        fn = np.sum((y_true == 4) & (y_pred == 2))
+        
+        # Restituisce la matrice di confusione
+        return np.array([[tn, fp], [fn, tp]])
+
+    def compute_metrics(self, y_true, y_pred):
+        """Calcola le metriche di valutazione."""
+        # Calcola la matrice di confusione
+        confusion_matrix = self.compute_confusion_matrix(y_true, y_pred)
+        tn, fp, fn, tp = confusion_matrix.ravel()
+        
+        # Accuratezza: proporzione di previsioni corrette rispetto al totale dei campioni
+        accuracy = (tp + tn) / len(y_true)
+        # Tasso di errore: complemento dell'accuratezza
+        error_rate = 1 - accuracy
+        # Sensibilità (Recall o True Positive Rate): capacità del modello di identificare correttamente i positivi
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+        # Specificità (True Negative Rate): capacità del modello di identificare correttamente i negativi
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+        # Media geometrica della sensibilità e specificità, utile per dataset sbilanciati
+        geometric_mean = np.sqrt(sensitivity * specificity)
+        
+        # Restituisce un dizionario con tutte le metriche calcolate
+        return {
+            "Confusion Matrix": confusion_matrix,
+            "Accuracy": f"{accuracy:.4f}",
+            "Error Rate": f"{error_rate:.4f}",
+            "Sensitivity (Recall)": f"{sensitivity:.4f}",
+            "Specificity": f"{specificity:.4f}",
+            "Geometric Mean": f"{geometric_mean:.4f}"
+        }
+
 # Strategia Holdout
 class HoldoutValidation(ValidationStrategy):
     """
