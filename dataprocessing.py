@@ -2,105 +2,7 @@ import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
 import os
-
-# Definizione dell'interfaccia della strategia di caricamento
-class LoadStrategy(ABC):
-    @abstractmethod
-    def load(self, file_path):
-        """
-        Metodo astratto per caricare i dati da un file.
-        
-        Parametri:
-        file_path (str): Il percorso del file da cui caricare i dati.
-        
-        Restituisce:
-        pd.DataFrame: Il dataset caricato.
-        """
-        pass
-
-# Implementazione della strategia di caricamento da file CSV
-class CSVLoadStrategy(LoadStrategy):
-    def load(self, file_path):
-        """
-        Carica i dati da un file CSV.
-        
-        Parametri:
-        file_path (str): Il percorso del file CSV da cui caricare i dati.
-        
-        Restituisce:
-        pd.DataFrame: Il dataset caricato.
-        """
-        #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        data = pd.read_csv(file_path)
-        data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
-        data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
-        return data
-
-# Implementazione della strategia di caricamento da file JSON
-class JSONLoadStrategy(LoadStrategy):
-    def load(self, file_path):
-        """
-        Carica i dati da un file JSON.
-        
-        Parametri:
-        file_path (str): Il percorso del file JSON da cui caricare i dati.
-        
-        Restituisce:
-        pd.DataFrame: Il dataset caricato.
-        """
-        #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        data = pd.read_json(file_path)
-        data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
-        data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
-        return data
-
-# Implementazione della strategia di caricamento da file di testo
-class TextLoadStrategy(LoadStrategy):
-    def load(self, file_path):
-        """
-        Carica i dati da un file di testo con delimitatore di tabulazione.
-        
-        Parametri:
-        file_path (str): Il percorso del file di testo da cui caricare i dati.
-        
-        Restituisce:
-        pd.DataFrame: Il dataset caricato.
-        """
-        #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        data = pd.read_csv(file_path, delimiter='\t')
-        data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
-        data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
-        return data
-
-# Implementazione della strategia di caricamento da file Excel
-class ExcelLoadStrategy(LoadStrategy):
-    def load(self, file_path):
-        """
-        Carica i dati da un file Excel.
-        
-        Parametri:
-        file_path (str): Il percorso del file Excel da cui caricare i dati.
-        
-        Restituisce:
-        pd.DataFrame: Il dataset caricato.
-        """
-        #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        data = pd.read_excel(file_path)
-        data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
-        data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
-        return data
+from load_strategy import LoadStrategy, CSVLoadStrategy, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
 
 # Classe principale per il preprocessing del dataset
 class DataProcessor:
@@ -171,21 +73,4 @@ class DataProcessor:
     
         return self.features, self.target
 
-# Funzione per selezionare automaticamente la strategia di caricamento
-def select_load_strategy():
-    if os.path.exists('dataset.csv'):
-        return CSVLoadStrategy(), 'dataset.csv'
-    elif os.path.exists('dataset.json'):
-        return JSONLoadStrategy(), 'dataset.json'
-    elif os.path.exists('dataset.txt'):
-        return TextLoadStrategy(), 'dataset.txt'
-    elif os.path.exists('dataset.xlsx'):
-        return ExcelLoadStrategy(), 'dataset.xlsx'
-    else:
-        raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
 
-# Esempio di utilizzo con selezione automatica della strategia di caricamento
-if __name__ == "__main__":
-    load_strategy, file_path = select_load_strategy()
-    processor = DataProcessor(file_path, load_strategy)
-    processor.process()
