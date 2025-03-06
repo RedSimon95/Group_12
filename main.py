@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
 import sys
-from dataprocessing import CSVLoadStrategy, DataProcessor
+from dataprocessing import CSVLoadStrategy, DataProcessor, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
 from model import KNNClassifier
 from validation import ValidationFactory
+import os
 
 
-
+print("\n Inserire nella directory un file con una qualsiasi delle estenisone supportate: CSV, JSON, TXT, XLSX")
 def errorMessage(point):
 
     # Stampa un messaggio di errore:
@@ -201,14 +202,25 @@ def main():
     
     if inputError!=2:
 
-        # Percorsi dei file
-        file_path = "dataset.csv"
+        def select_load_strategy():
+            for file in os.listdir('.'):
+                if file.endswith('.csv'):
+                    return CSVLoadStrategy(), file
+                elif file.endswith('.json'):
+                    return JSONLoadStrategy(), file
+                elif file.endswith('.txt'):
+                    return TextLoadStrategy(), file
+                elif file.endswith('.xlsx'):
+                    return ExcelLoadStrategy(), file
+            raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
         load_strategy = CSVLoadStrategy()
         output_features = "processed_features.csv"
         output_target = "processed_target.csv"
 
         # Preprocessing
-        processor = DataProcessor(file_path, load_strategy, output_features, output_target)
+        load_strategy, file_path = select_load_strategy()
+        processor = DataProcessor( file_path, load_strategy, output_features, output_target)
+    
         features, target = processor.process()
 
         # Convertire in NumPy
