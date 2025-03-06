@@ -1,3 +1,0 @@
-Confusion Matrix,Accuracy,Error Rate,Sensitivity (Recall),Specificity,Geometric Mean
-"[[222   4]
- [ 10 107]]",0.9592,0.0408,0.9145,0.9823,0.9478
