@@ -1,301 +1,180 @@
 import pandas as pd
 import numpy as np
 import sys
-from dataprocessing import CSVLoadStrategy, DataProcessor, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
-from model import KNNClassifier
-from validation import ValidationFactory
 import os
-
-
-print("\n Inserire nella directory un file con una qualsiasi delle estenisone supportate: CSV, JSON, TXT, XLSX")
-def errorMessage(point):
-
-    # Stampa un messaggio di errore:
-    #   Per l'inserimento di k quando point==1
-    #   Per l'inserimento del metodo quando point==2
-    #   Per l'inserimento della percentuale nell'holdout quando point==3,4
-    # Input:
-    #       point : [int] in base al suo valore viene stampato un messaggio di errore diverso, come specificato sopra
-
-    print("\n+++++++++++++++ ERRORE +++++++++++++++++++")
-    if point==1:
-        print("++ Inserire un numero intero positivo.  ++")
-    elif point==2:
-        print("++ Scegliere uno dei seguenti metodi:   ++")
-        print("++ holdout, kfold, stratified           ++")
-    elif point==3 or point==4:
-        if point==4:
-            print("++ Non è possibile scegliere il 100%    ++")
-        print("++ Scegliere una percentuale valida co- ++")
-        print("++ me specificato (es. 0.3 per 30%)     ++")
-    print("++ Altrimenti PER USCIRE DIGITA \"0\".    ++")
-    print("++++++++++++++++++++++++++++++++++++++++++\n")
-
-
-
-def welcomeMessage(contatoreEsecuzioni):
-
-    # Stampa un messaggio di inizio esecuzione
-    # Input:
-    #       contatoreEsecuzioni : [int] numero dell'esecuzione corrente
-
-    print("\n++++++++++++++++++++++++++++++++++++++++++")
-    if contatoreEsecuzioni<10:
-        print("++++++++++++++ ESECUZIONE "+str(contatoreEsecuzioni)+" ++++++++++++++")
-    else:
-        print("+++++++++++++ ESECUZIONE "+str(contatoreEsecuzioni)+" ++++++++++++++")
-    print("++++++++++++++++++++++++++++++++++++++++++\n")
-
-
-
-def exitMessage():
-
-    # Stampa un messaggio di termine esecuzione
-
-    print("\n++++++++++++++++++++++++++++++++++++++++++")
-    print("+++++++++++ TERMINE ESECUZIONE +++++++++++")
-    print("++++++++++++++++++++++++++++++++++++++++++\n")
-
-
-
-def verificaInteriPositivi(k):
-    
-    # Funzione per verificare che il valore in ingresso k sia positivo.
-    # Input:
-    #       k : [int]
-    # Output:
-    #       0 : se il valore è negativo
-    #       1 : se il valore è positivo
-    #       2 : se il valore è 0
-    # I valori sono utili all'aggiornamneto della variabile inputError che gestisce l'inserimento dei valori nel main
-
-    if k<0:
-        errorMessage(1)
-        return 0 #Input non valido, nuovo inserimento
-    elif k==0 :
-        exitMessage()
-        return 2 #L'esecuzione termina
-    else:
-        return 1 #Input valido, passo successivo
-
-
-
-def verificaPercentualiAnomale(percentuale):
-
-    # Stampa un messaggio di conferma in caso di percentuali inusuali (inferiori al 20 e superiori al 30)
-    # Input:
-    #       percentuale : [float] percentuale fornita in input in valore tra 0 e 1 (es. 20% sarà 0.2)
-    # Output:
-    #       0 : nel caso in cui si scelga di effettuare un nuovo inserimento
-    #       1 : nel caso in cui si confermi la scelta fatta
-    # I valori sono utili all'aggiornamneto della variabile inputError che gestisce l'inserimento dei valori nel main
-
-    if percentuale<0.2 or percentuale>0.3:
-        verifica=input("Si consigliano valori di percentuale compresi tra il 20 e il 30. Continuare comunque? si/no > ").strip().lower()
-        if verifica!="si":
-            return 0 #Input non valido, nuovo inserimento
-    return 1 #Input valido, passo successivo
-
-
-
-def verificaPercentuali(k):
-
-    # Verifica che le percentuali fornite in input siano ben scritte gestendo gli errori:
-    #   Se una percentuale assume valori inusuali (inferiori al 20 e superiori al 30) esegue verificaPercentualiAnomale per confermare o meno la scelta
-    #   Se una percentuale non viene espressa come valore tra 0 e 1 ma nel dormato 0%-100% chiede conferma
-    # Input:
-    #       percentuale : [int] percentuale fornita in input
-    # Output:
-    #       0 : percentuale non valida
-    #       1 : percentuale valida
-    #       2 : se il valore è 0
-    # I valori sono utili all'aggiornamneto della variabile inputError che gestisce l'inserimento dei valori nel main
-
-    if k<0 or k>=100:
-        errorMessage(3)
-        return 0 #Input non valido, nuovo inserimento
-    elif k==0:
-        exitMessage()
-        return 2 #L'esecuzione termina
-    elif k==1:
-        errorMessage(4)
-        return 0 #Input non valido, nuovo inserimento
-    elif k>1:
-        verifica=input("Forse intendevi "+str(int(k))+"% ? si/no > ").strip().lower()
-        if verifica=="si":
-            return verificaPercentualiAnomale(k/100)
-        else:
-            errorMessage(3)
-            return 0 #Input non valido, nuovo inserimento
-    else:
-        return verificaPercentualiAnomale(k)
-
-
+import seaborn as sns
+import matplotlib.pyplot as plt
+from load_strategy import LoadStrategy, CSVLoadStrategy, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
+from dataprocessing import DataProcessor
+from model import KNNClassifier
+from validation import ValidationStrategy, HoldoutValidation, KFoldValidation, StratifiedShuffleSplitValidation
 
 def main():
-
-    # Esegue un flusso completo: preprocessing, addestramento e valutazione del modello.
     
-    # INPUT DA CONSOLE
+    print("\n Inserire nella directory un file con una qualsiasi delle estensioni supportate: CSV, JSON, TXT, XLSX")
 
-    # Richiede un input per k finchè non viene fornito un valore valido (numero intero positivo).
-    # Il processo termina se viene inserito 0 (zero).
-
-    # La variabile inputError assume i seguenti valori
-    #       0 : (valore iniziale) finchè non viene fornito un input valido
-    #       1 : non appena viene fornito un input valido, permette il passaggio passo successivo
-    #       2 : condizione di uscita dall'esecuzione corrente
-
-    inputError=0
-    while inputError==0:
-        try:
-            k = int(input("Inserisci il numero di vicini (k) o digita 0 per uscire: ").strip())
-            inputError=verificaInteriPositivi(k)
-        except ValueError:
-            errorMessage(1)
-
-    if inputError!=2:
-        inputError=0
-        while inputError==0:
-            method = input("Scegli il metodo di valutazione (holdout, kfold, stratified) o digita 0 per uscire: ").strip().lower()
-            if method == "holdout":
-                while inputError==0:
-                    try:
-                        test_size = float(input("Inserisci la percentuale di test (es. 0.2 per il 20%) o digita 0 per uscire: ").strip())
-                        inputError=verificaPercentuali(test_size)
-                        if (inputError==1) and (test_size>1):
-                            test_size=test_size/100
-                    except ValueError:
-                        errorMessage(3)
-                k_folds, n_splits = None, None
-            elif method == "kfold":
-                while inputError==0:
-                    try:
-                        k_folds = int(input("Inserisci il numero di folds per K-Fold o digita 0 per uscire: ").strip())
-                        inputError=verificaInteriPositivi(k_folds)
-                    except ValueError:
-                        errorMessage(1)
-                test_size, n_splits = None, None
-            elif method == "stratified":
-                while inputError==0:
-                    try:
-                        n_splits = int(input("Inserisci il numero di split per Stratified Shuffle o digita 0 per uscire: ").strip())
-                        inputError=verificaInteriPositivi(n_splits)
-                    except ValueError:
-                        errorMessage(1)
-                if inputError!=2:
-                    inputError=0
-                    while inputError==0:
-                        try:
-                            test_size = float(input("Inserisci la percentuale di test (es. 0.2 per il 20%) o digita 0 per uscire: ").strip())
-                            inputError=verificaPercentuali(test_size)
-                            if (inputError==1) and (test_size>1):
-                                test_size=test_size/100
-                        except ValueError:
-                            errorMessage(3)
-                    k_folds = None
-            elif method == str(0):
-                exitMessage()
-                inputError=2
-            else:
-                errorMessage(2)
+    # Funzione che seleziona la strategia di caricamento dei dati in base al formato del file
+    # Questa funzione scansiona la cartella corrente per trovare un file con estensione supportata
+    # e restituisce la strategia di caricamento appropriata.
+    def select_load_strategy():
+        for file in os.listdir('.'):  # Scansiona la cartella corrente
+            if file.endswith('.csv'):
+                return CSVLoadStrategy(), file  # Restituisce la strategia per il caricamento di file CSV
+            elif file.endswith('.json'):
+                return JSONLoadStrategy(), file  # Restituisce la strategia per il caricamento di file JSON
+            elif file.endswith('.txt'):
+                return TextLoadStrategy(), file  # Restituisce la strategia per il caricamento di file TXT
+            elif file.endswith('.xlsx'):
+                return ExcelLoadStrategy(), file  # Restituisce la strategia per il caricamento di file XLSX
+        raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
     
-    if inputError!=2:
+    # Definizione dei file di output per le caratteristiche e target
+    output_features = "processed_features.csv"
+    output_target = "processed_target.csv"
 
-        def select_load_strategy():
-            for file in os.listdir('.'):
-                if file.endswith('.csv'):
-                    return CSVLoadStrategy(), file
-                elif file.endswith('.json'):
-                    return JSONLoadStrategy(), file
-                elif file.endswith('.txt'):
-                    return TextLoadStrategy(), file
-                elif file.endswith('.xlsx'):
-                    return ExcelLoadStrategy(), file
-            raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
-        load_strategy = CSVLoadStrategy()
-        output_features = "processed_features.csv"
-        output_target = "processed_target.csv"
+    # Selezione della strategia di caricamento e caricamento dei dati
+    # Inizializza DataProcessor che gestisce il caricamento dei dati e la loro separazione
+    # in features e target.
+    load_strategy, file_path = select_load_strategy()  
+    processor = DataProcessor(file_path, load_strategy, output_features, output_target)
+    features, target = processor.process()
 
-        # Preprocessing
-        load_strategy, file_path = select_load_strategy()
-        processor = DataProcessor( file_path, load_strategy, output_features, output_target)
+    X = features.to_numpy()
+    y = target.to_numpy().flatten()
     
-        features, target = processor.process()
+    k = int(input("Inserisci il numero di vicini (k): ").strip())
+    if k <= 0:
+        print("\n+++++++++++++++ ERRORE: Il numero di vicini deve essere positivo +++++++++++++++++++")
+        return
 
-        # Convertire in NumPy
-        X = features.to_numpy()
-        y = target.to_numpy().flatten()
-
-        # Inizializzazione del modello KNN
-        knn = KNNClassifier(k)
-
-        # Esegui il metodo di valutazione scelto dall'utente
-        if method == "holdout":
-            holdout = ValidationFactory.get_strategy("Holdout", 0.4)
-            X_train, X_test, y_train, y_test = holdout.split_data(X, y)
-            print(f" \n Holdout - Training set: \n {X_train.tolist()}, \n Test set: \n {X_test.tolist()}, \n  Training labels: \n {y_train.tolist()}, \n  Test labels: \n  {y_test.tolist()}")
-
-            knn.train(X_train, y_train)
-            metrics = holdout.compute_metrics(y_test, knn.predict(X_test))
-            print("\n >>> METRICHE:")
-            for metric, value in metrics.items():
-                print(f"{metric}: \n {value}")
-
-        elif method == "kfold":
-            kfold = ValidationFactory.get_strategy("K-Fold", 5)
-            folds = kfold.split_data(X, y)
-
-            print("\n Suddivisione K-Fold dei dati:")
-            for i, fold in enumerate(folds):
-                X_fold_train = X[fold]
-                y_fold_train = y[fold]
-                print(f"\n Fold {i+1}: \n Training set: \n {X_fold_train.tolist()}, \n Training labels: \n {y_fold_train.tolist()}")
-                knn.train(X_fold_train, y_fold_train)
-                metrics = kfold.compute_metrics(y_fold_train, knn.predict(X_fold_train))
-                print("\n >>> METRICHE:")
-                for metric, value in metrics.items():
-                    print(f"{metric}: \n {value}")
+    # Inizializza il modello KNN con il valore di k specificato
+    knn = KNNClassifier(k)
     
-        elif method == "stratified":
-            stratified = ValidationFactory.get_strategy("Stratified Shuffle", 0.4)
-            splits = stratified.split_data(X, y)
-            for i, (train_idx, test_idx) in enumerate(splits):
-                X_train_split = X[train_idx]
-                X_test_split = X[test_idx]
-                y_train_split = y[train_idx]
-                y_test_split = y[test_idx]
-                print(f"\n Stratified Shuffle {i+1}: \n Training set: \n {X_train_split.tolist()}, \n Test set: \n {X_test_split.tolist()}, \n Training labels:\n  {y_train_split.tolist()}, \n Test labels:\n  {y_test_split.tolist()}")
-                knn.train(X_train_split, y_train_split)
-                metrics = stratified.compute_metrics(y_test_split, knn.predict(X_test_split))
-                print("\n >>> METRICHE:")
-                for metric, value in metrics.items():
-                    print(f"{metric}: \n {value}")
+    method = input("Scegli il metodo di valutazione (holdout, kfold, stratified): ").strip().lower()
+    
+    # Funzione per disegnare la matrice di confusione
+    def plot_confusion_matrix(conf_matrix):
+        plt.figure(figsize=(6, 4))
+        sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Positive', 'Negative'], yticklabels=['Positive', 'Negative'])
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.title('Confusion Matrix')
+        plt.show()
 
-        # Salva i risultati in un file Excel
-        df_metrics = pd.DataFrame([metrics])
-        df_metrics.to_csv("evaluation_results.csv", index=False)
-        print("\n >>> RISULTATI SALVATI IN 'evaluation_results.csv'")
+    # Valutazione del modello utilizzando il metodo Holdout (splitting semplice dei dati)
+    if method == "holdout":
+        # Chiede la percentuale di dati da utilizzare per il test (fra 20% e 50%)
+        test_size = float(input("Inserisci la percentuale di test (es. 0.2 per il 20%): ").strip())
+        if test_size < 0.2 or test_size > 0.5:
+            print("\n ERRORE: Scegli una percentuale tra 20% e 50%")
+        else:
+            # Applica la validazione Holdout
+            holdout = HoldoutValidation(test_size)
+            X_train, X_test, y_train, y_test = holdout.split_data(X, y)  # Divide i dati in training e test
+            knn.train(X_train, y_train)  # Allena il modello KNN sui dati di training
+            y_pred = knn.predict(X_test)  # Predice sui dati di test
+            metrics = holdout.compute_metrics(y_test, y_pred)  # Calcola le metriche di valutazione
+            print("\n Holdout Metrics:\n")
+            plot_confusion_matrix(metrics['Confusion Matrix'])  # Visualizza la matrice di confusione
+
+    # Valutazione del modello utilizzando K-Fold Cross Validation
+    elif method == "kfold":
+        # Chiede il numero di fold per la validazione K-fold
+        k_folds = int(input("Inserisci il numero di folds per K-Fold: ").strip())
+        if k_folds < 2:
+            print("\n ERRORE: Il numero di folds deve essere almeno 2")
+            return
+        
+        # Applica la validazione K-fold
+        kfold = KFoldValidation(k_folds)
+        folds = kfold.split_data(X, y)  # Divide i dati in folds
+        # Inizializza variabili per calcolare le metriche aggregate
+        true_positive = 0
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+
+        # Ciclo su ciascun fold per allenare il modello e calcolare le metriche
+        for i, fold in enumerate(folds):
+            X_fold_train = X[fold]  # Dati di addestramento per il fold corrente
+            y_fold_train = y[fold]  # Target di addestramento per il fold corrente
+            knn.train(X_fold_train, y_fold_train)  # Allena il modello sui dati del fold
+            y_fold_pred = knn.predict(X_fold_train)  # Predice sui dati del fold
+            metrics = kfold.compute_metrics(y_fold_train, y_fold_pred)  # Calcola le metriche di valutazione
+            # Aggiunge le metriche della matrice di confusione per ciascun fold
+            true_positive += metrics['Confusion Matrix'][1, 1]
+            true_negative += metrics['Confusion Matrix'][0, 0]
+            false_positive += metrics['Confusion Matrix'][0, 1]
+            false_negative += metrics['Confusion Matrix'][1, 0]
+
+        # Calcola le metriche medie per tutti i fold
+        avg_metrics = {
+            'true_positives': true_positive / k_folds,
+            'true_negatives': true_negative / k_folds,
+            'false_positives': false_positive / k_folds,
+            'false_negatives': false_negative / k_folds
+        }
+
+        # Crea una matrice di confusione media per i fold
+        avgmatrix = [[int(avg_metrics['true_positives']), int(avg_metrics['false_positives'])], 
+                     [int(avg_metrics['false_negatives']), int(avg_metrics['true_negatives'])]]
+        print("\n K-Fold Average Metrics:\n")
+        plot_confusion_matrix(avgmatrix)  # Visualizza la matrice di confusione media
+
+    # Valutazione del modello utilizzando Stratified Shuffle Split (divisione stratificata)
+    elif method == "stratified":
+        # Chiede il numero di split per Stratified Shuffle Split
+        n_splits = int(input("Inserisci il numero di split per Stratified Shuffle: ").strip())
+        if n_splits < 2:
+            print("\n ERRORE: Il numero di split deve essere almeno 2")
+            return
+        
+        # Chiede la percentuale di dati da utilizzare per il test (fra 20% e 50%)
+        test_size = float(input("Inserisci la percentuale di test (es. 0.2 per il 20%): ").strip())
+        if test_size < 0.2 or test_size > 0.5:
+            print("\n ERRORE: Scegli una percentuale tra 20% e 50%")
+            return
+        
+        # Applica Stratified Shuffle Split
+        stratified = StratifiedShuffleSplitValidation(test_size, n_splits)
+        splits = stratified.split_data(X, y)  # Divide i dati in split
+        true_positive = 0
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+        
+        # Ciclo su ciascun split per allenare il modello e calcolare le metriche
+        for i, (train_idx, test_idx) in enumerate(splits):
+            X_train_split = X[train_idx]
+            X_test_split = X[test_idx]
+            y_train_split = y[train_idx]
+            y_test_split = y[test_idx]
+            knn.train(X_train_split, y_train_split)
+            y_pred = knn.predict(X_test_split)
+            metrics = stratified.compute_metrics(y_test_split, y_pred)
+            true_positive += metrics['Confusion Matrix'][1, 1]
+            true_negative += metrics['Confusion Matrix'][0, 0]
+            false_positive += metrics['Confusion Matrix'][0, 1]
+            false_negative += metrics['Confusion Matrix'][1, 0]
+        
+        # Calcola le metriche medie per tutti gli split
+        avg_metrics = {
+            'true_positives': true_positive / n_splits,
+            'true_negatives': true_negative / n_splits,
+            'false_positives': false_positive / n_splits,
+            'false_negatives': false_negative / n_splits
+        }
+
+        # Crea una matrice di confusione media per gli split
+        avgmatrix = [[int(avg_metrics['true_positives']), int(avg_metrics['false_positives'])], 
+                     [int(avg_metrics['false_negatives']), int(avg_metrics['true_negatives'])]]
+        print("\n Stratified Shuffle Split Average Metrics:\n")
+        plot_confusion_matrix(avgmatrix)  # Visualizza la matrice di confusione media
+
+    # Salva le metriche di valutazione in un file CSV
+    df_metrics = pd.DataFrame([metrics])  # Crea un DataFrame con le metriche
+    df_metrics.to_csv("evaluation_results.csv", index=False)  # Salva le metriche in un file CSV
+    print("\n >>> RISULTATI SALVATI IN 'evaluation_results.csv'")  # Conferma che i risultati sono stati salvati
     
 if __name__ == "__main__":
-    print("\n++++++++++++++++++++++++++++++++++++++++++")
-    print("++++++++ ADDESTRAMENTO AI TUMORI +++++++++")
-    print("++++++++++++++++++++++++++++++++++++++++++\n")
-    contatoreEsecuzioni=1
-    continuare="si"
-    while continuare=="si":
-        
-        welcomeMessage(contatoreEsecuzioni)
-
-        main()
-
-        print("\n++++++++++++++++++++++++++++++++++++++++++")
-        continuare=input("\n ESECUZIONE COMPLETATA: vuoi iniziare una nuova analisi? si/no > ")
-
-        while continuare!="si" and continuare!="no":
-            continuare=input("\n Valore non valido. Scegliere tra si/no > ")
-
-        if continuare=="no":
-            exitMessage()
-
-        contatoreEsecuzioni=contatoreEsecuzioni+1
+    main()  # Esegue la funzione principale
