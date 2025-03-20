@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
 
 # Definizione dell'interfaccia della strategia di caricamento
 class LoadStrategy(ABC):
@@ -31,8 +31,8 @@ class CSVLoadStrategy(LoadStrategy):
         pd.DataFrame: Il dataset caricato.
         """
         #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        #if not os.path.exists(file_path):
+        #    raise FileNotFoundError(f"File not found: {file_path}")
         
         data = pd.read_csv(file_path)
         data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
@@ -52,8 +52,8 @@ class JSONLoadStrategy(LoadStrategy):
         pd.DataFrame: Il dataset caricato.
         """
         #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        #if not os.path.exists(file_path):
+        #    raise FileNotFoundError(f"File not found: {file_path}")
         
         data = pd.read_json(file_path)
         data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
@@ -73,8 +73,8 @@ class TextLoadStrategy(LoadStrategy):
         pd.DataFrame: Il dataset caricato.
         """
         #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        #if not os.path.exists(file_path):
+        #    raise FileNotFoundError(f"File not found: {file_path}")
         
         data = pd.read_csv(file_path, delimiter='\t')
         data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
@@ -94,10 +94,12 @@ class ExcelLoadStrategy(LoadStrategy):
         pd.DataFrame: Il dataset caricato.
         """
         #Verifica l'esistenza della directory
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+        #if not os.path.exists(file_path):
+        #    raise FileNotFoundError(f"File not found: {file_path}")
         
         data = pd.read_excel(file_path)
         data.replace("?", np.nan, inplace=True)  # Sostituisce i "?" con NaN
         data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
         return data
+    
+

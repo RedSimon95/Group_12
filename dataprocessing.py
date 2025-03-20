@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from abc import ABC, abstractmethod
 import os
 from load_strategy import LoadStrategy, CSVLoadStrategy, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
 
@@ -24,12 +23,12 @@ class DataProcessor:
             None
         """
         self.file_path = file_path
+        self.load_strategy = load_strategy
         self.output_features = output_features
         self.output_target = output_target
         self.data = None
         self.features = None
         self.target = None
-        self.load_strategy = load_strategy
 
     def process(self):
         """
@@ -72,5 +71,5 @@ class DataProcessor:
 
     
         return self.features, self.target
-
+    
 

@@ -6,8 +6,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from load_strategy import LoadStrategy, CSVLoadStrategy, JSONLoadStrategy, TextLoadStrategy, ExcelLoadStrategy
 from dataprocessing import DataProcessor
-from model import KNNClassifier
-from validation import ValidationStrategy, HoldoutValidation, KFoldValidation, StratifiedShuffleSplitValidation
+from model import Classifier, KNNClassifier
+from validation import ModelEvaluator
 
 def main():
     
@@ -17,7 +17,9 @@ def main():
     # Questa funzione scansiona la cartella corrente per trovare un file con estensione supportata
     # e restituisce la strategia di caricamento appropriata.
     def select_load_strategy():
-        for file in os.listdir('.'):  # Scansiona la cartella corrente
+        directory_content=os.listdir('.')
+        # Percorso directory corrente str(os.getcwd()).split('\\')[-1]+"/"+nome_file
+        for file in directory_content:  # Scansiona la cartella corrente
             if file.endswith('.csv'):
                 return CSVLoadStrategy(), file  # Restituisce la strategia per il caricamento di file CSV
             elif file.endswith('.json'):
@@ -28,15 +30,12 @@ def main():
                 return ExcelLoadStrategy(), file  # Restituisce la strategia per il caricamento di file XLSX
         raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
     
-    # Definizione dei file di output per le caratteristiche e target
-    output_features = "processed_features.csv"
-    output_target = "processed_target.csv"
 
     # Selezione della strategia di caricamento e caricamento dei dati
     # Inizializza DataProcessor che gestisce il caricamento dei dati e la loro separazione
     # in features e target.
     load_strategy, file_path = select_load_strategy()  
-    processor = DataProcessor(file_path, load_strategy, output_features, output_target)
+    processor = DataProcessor(file_path, load_strategy)
     features, target = processor.process()
 
     X = features.to_numpy()
@@ -49,6 +48,8 @@ def main():
 
     # Inizializza il modello KNN con il valore di k specificato
     knn = KNNClassifier(k)
+
+    modelevaluator = ModelEvaluator(knn, X, y)
     
     method = input("Scegli il metodo di valutazione (holdout, kfold, stratified): ").strip().lower()
     
@@ -69,11 +70,10 @@ def main():
             print("\n ERRORE: Scegli una percentuale tra 20% e 50%")
         else:
             # Applica la validazione Holdout
-            holdout = HoldoutValidation(test_size)
-            X_train, X_test, y_train, y_test = holdout.split_data(X, y)  # Divide i dati in training e test
+            X_train, X_test, y_train, y_test = modelevaluator.holdout(test_size)
             knn.train(X_train, y_train)  # Allena il modello KNN sui dati di training
             y_pred = knn.predict(X_test)  # Predice sui dati di test
-            metrics = holdout.compute_metrics(y_test, y_pred)  # Calcola le metriche di valutazione
+            metrics = modelevaluator.compute_metrics(y_test, y_pred)  # Calcola le metriche di valutazione
             print("\n Holdout Metrics:\n")
             plot_confusion_matrix(metrics['Confusion Matrix'])  # Visualizza la matrice di confusione
 
@@ -86,8 +86,7 @@ def main():
             return
         
         # Applica la validazione K-fold
-        kfold = KFoldValidation(k_folds)
-        folds = kfold.split_data(X, y)  # Divide i dati in folds
+        folds = modelevaluator.k_fold_cross_validation(k_folds) # Divide i dati in folds
         # Inizializza variabili per calcolare le metriche aggregate
         true_positive = 0
         true_negative = 0
@@ -100,7 +99,7 @@ def main():
             y_fold_train = y[fold]  # Target di addestramento per il fold corrente
             knn.train(X_fold_train, y_fold_train)  # Allena il modello sui dati del fold
             y_fold_pred = knn.predict(X_fold_train)  # Predice sui dati del fold
-            metrics = kfold.compute_metrics(y_fold_train, y_fold_pred)  # Calcola le metriche di valutazione
+            metrics = modelevaluator.compute_metrics(y_fold_train, y_fold_pred)  # Calcola le metriche di valutazione
             # Aggiunge le metriche della matrice di confusione per ciascun fold
             true_positive += metrics['Confusion Matrix'][1, 1]
             true_negative += metrics['Confusion Matrix'][0, 0]
@@ -136,8 +135,7 @@ def main():
             return
         
         # Applica Stratified Shuffle Split
-        stratified = StratifiedShuffleSplitValidation(test_size, n_splits)
-        splits = stratified.split_data(X, y)  # Divide i dati in split
+        splits = modelevaluator.stratified_shuffle_split(test_size, n_splits)
         true_positive = 0
         true_negative = 0
         false_positive = 0
@@ -151,7 +149,7 @@ def main():
             y_test_split = y[test_idx]
             knn.train(X_train_split, y_train_split)
             y_pred = knn.predict(X_test_split)
-            metrics = stratified.compute_metrics(y_test_split, y_pred)
+            metrics = modelevaluator.compute_metrics(y_test_split, y_pred)
             true_positive += metrics['Confusion Matrix'][1, 1]
             true_negative += metrics['Confusion Matrix'][0, 0]
             false_positive += metrics['Confusion Matrix'][0, 1]
