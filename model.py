@@ -36,18 +36,10 @@ class KNNClassifier(Classifier):
             # Prende l'etichetta più comune tra i k punti più vicini
             predictions.append(np.bincount(nearest_labels).argmax())
         return np.array(predictions)
+    
 
 
-# Factory per creare il classificatore
-class ClassifierFactory:
-    @staticmethod
-    def create_classifier(method, param):
-        if method == "k-NN":
-            return KNNClassifier(k=param)
-        else:
-            raise ValueError("Classifier not supported")
-
-# Blocco di test per il KNN
+# ------ BLOCCO DI TEST PER IL KNN ------
 def test_knn_classifier():
     print("\n Eseguendo i test su KNNClassifier...\n")
 
@@ -59,19 +51,19 @@ def test_knn_classifier():
     y_test = np.array([0, 1, 1])  # Valori attesi
 
     # Creazione del modello KNN con k=3
-    knn = ClassifierFactory.create_classifier("k-NN", 3)
+    knn = KNNClassifier(3)
     knn.train(X_train, y_train)
     predictions = knn.predict(X_test)
 
-    print(f"🔹 Predizioni: {predictions.tolist()}")
-    print(f"🔹 Valori attesi: {y_test.tolist()}")
+    print(f"    Predizioni: {predictions.tolist()}")
+    print(f"    Valori attesi: {y_test.tolist()}")
 
     # Controlliamo se le predizioni corrispondono ai valori attesi
-    assert len(predictions) == len(y_test), "Errore: Numero di predizioni errato!"
-    assert np.array_equal(predictions, y_test), "Errore: Le predizioni non corrispondono ai valori attesi!"
-    print("KNNClassifier ha passato tutti i test con successo!")
+    assert len(predictions) == len(y_test), "\nErrore: Numero di predizioni errato!"
+    assert np.array_equal(predictions, y_test), "\nErrore: Le predizioni non corrispondono ai valori attesi!"
+    print("\nKNNClassifier ha passato tutti i test con successo!")
 
 # Esegue i test solo se il file viene eseguito direttamente
 if __name__ == "__main__":
     test_knn_classifier()
-    print("\n Tutti i test su KNN sono stati superati con successo! \n")
+    print("\nTutti i test su KNN sono stati superati con successo! \n")

@@ -2,14 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from dataprocessing import DataProcessor, CSVLoadStrategy  # Import per il preprocessing
-from model import ClassifierFactory  # Import per il modello KNN
+from load_strategy import CSVLoadStrategy
+from dataprocessing import DataProcessor  # Import per il preprocessing
+from model import KNNClassifier # Import per il modello KNN
 
 class ModelEvaluator:
     """
     Classe per la valutazione del modello KNN utilizzando Holdout, K-Fold Cross Validation e Stratified Shuffle Split.
     """
-    def _init_(self, model, X, y):
+    def __init__(self, model, X, y):
         """
         Inizializza l'evaluator con il modello e i dati.
         :param model: Modello KNN addestrabile.
@@ -23,112 +24,123 @@ class ModelEvaluator:
         self.logs = []  # Struttura per tenere traccia dei risultati
         self.global_conf_matrix = np.zeros((2, 2), dtype=int)  # Matrice di confusione globale
 
+    def compute_confusion_matrix(self, y_true, y_pred):
+        """Calcola la matrice di confusione."""
+        # Calcolo dei veri positivi (TP): casi in cui il valore reale e la predizione sono entrambi 4
+        tp = np.sum((y_true == 4) & (y_pred == 4))
+        # Calcolo dei veri negativi (TN): casi in cui il valore reale e la predizione sono entrambi 2
+        tn = np.sum((y_true == 2) & (y_pred == 2))
+        # Calcolo dei falsi positivi (FP): casi in cui il valore reale è 2 ma la predizione è 4
+        fp = np.sum((y_true == 2) & (y_pred == 4))
+        # Calcolo dei falsi negativi (FN): casi in cui il valore reale è 4 ma la predizione è 2
+        fn = np.sum((y_true == 4) & (y_pred == 2))
+        
+        # Restituisce la matrice di confusione
+        return np.array([[tn, fp], [fn, tp]])
+
+    def compute_metrics(self, y_true, y_pred):
+        """Calcola le metriche di valutazione."""
+        # Calcola la matrice di confusione
+        confusion_matrix = self.compute_confusion_matrix(y_true, y_pred)
+        tn, fp, fn, tp = confusion_matrix.ravel()
+        
+        # Accuratezza: proporzione di previsioni corrette rispetto al totale dei campioni
+        accuracy = (tp + tn) / len(y_true)
+        # Tasso di errore: complemento dell'accuratezza
+        error_rate = 1 - accuracy
+        # Sensibilità (Recall o True Positive Rate): capacità del modello di identificare correttamente i positivi
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+        # Specificità (True Negative Rate): capacità del modello di identificare correttamente i negativi
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+        # Media geometrica della sensibilità e specificità, utile per dataset sbilanciati
+        geometric_mean = np.sqrt(sensitivity * specificity)
+        
+        # Restituisce un dizionario con tutte le metriche calcolate
+        return {
+            "Confusion Matrix": confusion_matrix,
+            "Accuracy": f"{accuracy:.4f}",
+            "Error Rate": f"{error_rate:.4f}",
+            "Sensitivity (Recall)": f"{sensitivity:.4f}",
+            "Specificity": f"{specificity:.4f}",
+            "Geometric Mean": f"{geometric_mean:.4f}"
+        }
+
     def holdout(self, test_size=0.2):
         """
         Suddivide il dataset in training e test set secondo il metodo Holdout.
         :param test_size: Percentuale di dati da destinare al test set (default = 0.2).
         """
-        # Esegue la divisione casuale tra training e test set
-        indices = np.random.permutation(len(self.X))  # Indici casuali per mescolare i dati
-        n_test = int(len(self.X) * test_size)  # Numero di campioni nel test set
-        test_indices, train_indices = indices[:n_test], indices[n_test:]  # Suddivisione dei dati
-
-        X_train, X_test = self.X[train_indices], self.X[test_indices]  # Features di train e test
-        y_train, y_test = self.y[train_indices], self.y[test_indices]  # Target di train e test
-
-        # Allena il modello e predice i risultati sui dati di test
-        self.model.train(X_train, y_train)
-        y_pred = self.model.predict(X_test)
-
-        # Calcola le metriche di valutazione e aggiorna la matrice di confusione
-        results = self.compute_metrics(y_test, y_pred)
-        self.logs.append({"Method": "Holdout", **results})  # Aggiunge i risultati ai log
-        self._update_confusion_matrix(y_test, y_pred)  # Aggiorna la matrice di confusione
-        self._plot_confusion_matrix()  # Visualizza la matrice di confusione
-        return results  # Restituisce i risultati
+        # Mescola gli indici dei dati per garantire la casualità
+        indices = np.random.permutation(len(self.X))  
+        
+        # Calcola la posizione dove i dati saranno divisi in training e test set
+        split = int(len(self.X) * (1-test_size)) 
+        
+        # Suddivide gli indici dei dati in due gruppi: uno per il training e uno per il test
+        train_indices, test_indices = indices[:split], indices[split:]  
+        return self.X[train_indices], self.X[test_indices], self.y[train_indices], self.y[test_indices]
 
     def k_fold_cross_validation(self, k=5):
         """
         Esegue la validazione incrociata K-Fold.
         :param k: Numero di fold per la cross-validation (default = 5).
         """
-        # Mescola i dati per assicurarsi che ogni fold sia casuale
-        indices = np.random.permutation(len(self.X))
-        fold_size = len(self.X) // k  # Calcola la dimensione di ogni fold
-
-        # Esegui la cross-validation per ogni fold
-        for i in range(k):
-            # Separa i dati in un fold di test e il resto come train
-            test_indices = indices[i * fold_size: (i + 1) * fold_size]
-            train_indices = np.setdiff1d(indices, test_indices)
-
-            X_train, X_test = self.X[train_indices], self.X[test_indices]  # Features per il train e il test
-            y_train, y_test = self.y[train_indices], self.y[test_indices]  # Target per il train e il test
-
-            # Allena il modello sui dati di addestramento e predice sui dati di test
-            self.model.train(X_train, y_train)
-            y_pred = self.model.predict(X_test)
-
-            # Calcola le metriche per il fold corrente e aggiorna la matrice di confusione
-            results = self.compute_metrics(y_test, y_pred)
-            self.logs.append({"Method": f"K-Fold {i+1}/{k}", **results})  # Aggiunge i risultati ai log
-            self._update_confusion_matrix(y_test, y_pred)
-
-        # Dopo tutti i fold, visualizza la matrice di confusione aggregata
-        self._plot_confusion_matrix()
-        return results  # Restituisce gli ultimi risultati
+        # Mescola gli indici dei dati per garantire la casualità prima di suddividere in fold
+        indices = np.random.permutation(len(self.X))  
+        
+        # Suddivide gli indici in k parti (fold)
+        folds = np.array_split(indices, k)  
+        return folds  # Restituisce gli ultimi risultati
 
     def stratified_shuffle_split(self, test_size=0.2, n_splits=5):
         """
         Implementazione manuale di Stratified Shuffle Split usando solo numpy e pandas.
         """
-        unique_classes, class_counts = np.unique(self.y, return_counts=True)  # Ottiene le classi uniche
-
-        # Esegui la suddivisione stratificata per un numero definito di split
-        for i in range(n_splits):
+        # Calcola la distribuzione delle classi nel dataset
+        unique_classes, class_counts = np.unique(self.y, return_counts=True)
+        splits = []
+        
+        for _ in range(n_splits):
+            # Per ogni split, prepariamo gli indici per il training e il test set
             train_indices = []
             test_indices = []
+            
+            # Per ogni classe, mescoliamo i campioni e li dividiamo tra training e test set
+            for cls in unique_classes:
+                cls_indices = np.where(self.y == cls)[0]  # Ottieni gli indici di una specifica classe
+                np.random.shuffle(cls_indices)  # Mescola gli indici di quella classe
+                
+                # Calcoliamo quanti campioni di questa classe devono andare nel test set
+                n_test = int(len(cls_indices) * test_size)  
+                
+                # Selezioniamo i primi indici per il test set e gli altri per il training set
+                test_indices.extend(cls_indices[:n_test])  
+                train_indices.extend(cls_indices[n_test:])  
+            
+            # Salviamo le suddivisioni (training e test) per ciascun split
+            splits.append((np.array(train_indices), np.array(test_indices)))
+        
+        return splits  # Restituisce gli ultimi risultati
 
-            # Per ogni classe, suddivide i dati mantenendo la distribuzione originale
-            for cls, count in zip(unique_classes, class_counts):
-                cls_indices = np.where(self.y == cls)[0]  # Ottiene gli indici per ciascuna classe
-                np.random.shuffle(cls_indices)  # Mescola gli indici della classe
 
-                n_test = int(len(cls_indices) * test_size)  # Numero di dati da destinare al test
-                test_indices.extend(cls_indices[:n_test])  # Aggiungi gli indici al test set
-                train_indices.extend(cls_indices[n_test:])  # Aggiungi gli altri indici al train set
+# ------ BLOCCO DI TEST ------
+if __name__=='__main__':
+    # Caricamento e preprocessing del dataset
+    # Viene caricato il dataset tramite la classe DataProcessor che gestisce il caricamento e la preparazione dei dati
 
-            train_indices = np.array(train_indices)
-            test_indices = np.array(test_indices)
+    output_features = "processed_features.csv"
+    output_target = "processed_target.csv"
 
-            X_train, X_test = self.X[train_indices], self.X[test_indices]  # Features di train e test
-            y_train, y_test = self.y[train_indices], self.y[test_indices]  # Target di train e test
+    data_processor = DataProcessor("dataset.csv", CSVLoadStrategy(), output_features, output_target)
+    features, target = data_processor.process()  # Estrae le features e il target dal dataset
 
-            # Allena il modello e predice sui dati di test
-            self.model.train(X_train, y_train)
-            y_pred = self.model.predict(X_test)
+    # Creazione del modello KNN
+    # Utilizza il factory pattern per creare un classificatore KNN con k=3
+    knn_model = KNNClassifier(3)
 
-            # Calcola le metriche per lo split corrente e aggiorna la matrice di confusione
-            results = self.compute_metrics(y_test, y_pred)
-            self.logs.append({"Method": f"Stratified Shuffle {i+1}/{n_splits}", **results})
-            self._update_confusion_matrix(y_test, y_pred)
-
-        # Dopo tutti gli split, visualizza la matrice di confusione aggregata
-        self._plot_confusion_matrix()
-        return results  # Restituisce gli ultimi risultati
-
-# Caricamento e preprocessing del dataset
-# Viene caricato il dataset tramite la classe DataProcessor che gestisce il caricamento e la preparazione dei dati
-data_processor = DataProcessor("dataset.csv", CSVLoadStrategy())
-features, target = data_processor.process()  # Estrae le features e il target dal dataset
-
-# Creazione del modello KNN
-# Utilizza il factory pattern per creare un classificatore KNN con k=3
-knn_model = ClassifierFactory.create_classifier("k-NN", 3)
-
-# Valutazione del modello
-# Viene inizializzata la classe ModelEvaluator per eseguire la valutazione del modello con i vari metodi
-model_evaluator = ModelEvaluator(knn_model, features, target)
-model_evaluator.holdout()  # Esegui la valutazione tramite il metodo Holdout
-model_evaluator.k_fold_cross_validation()  # Esegui la valutazione tramite K-Fold Cross Validation
-model_evaluator.stratified_shuffle_split()  # Esegui la valutazione tramite Stratified Shuffle Split
+    # Valutazione del modello
+    # Viene inizializzata la classe ModelEvaluator per eseguire la valutazione del modello con i vari metodi
+    model_evaluator = ModelEvaluator(knn_model, features, target)
+    model_evaluator.holdout()  # Esegui la valutazione tramite il metodo Holdout
+    model_evaluator.k_fold_cross_validation()  # Esegui la valutazione tramite K-Fold Cross Validation
+    model_evaluator.stratified_shuffle_split()  # Esegui la valutazione tramite Stratified Shuffle Split
