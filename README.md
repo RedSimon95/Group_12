@@ -1,29 +1,11 @@
-L'obiettivo di questo progetto consiste nel sviluppare un modello di apprendimento automatico e verificarne le prestazioni per classificare i tumori in base allecaratteristiche fornite.
+Il codice del file `main` implementa un sistema completo per la classificazione utilizzando l'algoritmo K-Nearest Neighbors (KNN). Il flusso del programma include il caricamento del dataset, la sua elaborazione, l'addestramento del modello e la valutazione delle prestazioni attraverso diverse tecniche di validazione.  
 
-Il file dataprocessing serve per caricare e ripulire un dataset affinché possa essere utilizzato con tecniche di validazione come Holdout, k-Fold Cross Validation e Stratified Cross Validation. La classe principale, DataProcessor, si occupa di tutto il processo di preprocessing attraverso il metodo process(), che segue diversi passaggi fondamentali.
+Il programma inizia richiedendo all'utente di inserire il path del file contenente il dataset in uno dei formati supportati, come CSV, JSON, TXT o XLSX. Per determinare il metodo di caricamento appropriato, utilizza la funzione `select_load_strategy()`, che seleziona la strategia corrispondente in base all'estensione del file e lo passa al `DataProcessor`.  
 
-Innanzitutto, il dataset viene caricato utilizzando una strategia specifica in base al formato del file, supportando CSV, JSON, TXT ed Excel. Una volta caricato, vengono gestiti i valori mancanti eliminando le righe in cui la colonna del target (classtype_v1) è assente, mentre i valori mancanti nelle feature vengono riempiti con la media della rispettiva colonna.
+Il `DataProcessor` si occupa della fase di preprocessing dei dati, caricando il dataset con la strategia scelta ed eseguendo operazioni fondamentali per migliorare la qualità dei dati. In questa fase, le righe con target mancanti vengono eliminate, mentre le features con valori NaN vengono riempite con la media della colonna corrispondente. Inoltre, alcune colonne non necessarie vengono rimosse, il target viene separato dalle features e queste ultime vengono normalizzate tra 0 e 1. Dopo il preprocessing, i dati elaborati vengono salvati su file CSV e restituiti come array.  
 
-Successivamente, alcune colonne non necessarie ai fini del progetto vengono rimosse. Una volta ripuliti, i dati vengono suddivisi in due parti: le features e la colonna delle classi, che rappresenta le classi da prevedere. Le feature vengono poi normalizzate, scalando i valori tra 0 e 1, per garantire che abbiano lo stesso peso durante l’addestramento del modello.
+Successivamente, il programma converte le features e il target in array NumPy e chiede all’utente di specificare il valore di `k` per il classificatore KNN. Una volta inserito un valore valido, viene creato un oggetto `KNNClassifier`, che rappresenta il modello di apprendimento basato sull'algoritmo dei k-nearest neighbors.  
 
-Infine, il dataset processato viene salvato in due file separati, uno per le feature e uno per le classi, rendendolo pronto per essere utilizzato nei modelli di machine learning.
+Per valutare le prestazioni del modello, viene utilizzata la classe `ModelEvaluator`, che implementa tre metodi di validazione: Holdout, K-Fold Cross Validation e Stratified Shuffle Split. Nel metodo Holdout, il dataset viene diviso in training e test set secondo la proporzione scelta dall’utente e il modello viene addestrato e testato sui rispettivi insiemi. Nel metodo K-Fold Cross Validation, i dati vengono suddivisi in più sottoinsiemi per garantire una valutazione più affidabile, addestrando il modello su una parte del dataset e testandolo su quella restante in più iterazioni. Nel metodo Stratified Shuffle Split, la suddivisione tra training e test set avviene in modo stratificato, mantenendo la distribuzione delle classi nei diversi insiemi e ripetendo l’operazione più volte per ottenere una valutazione più solida.  
 
-Il file model.py implementa il metodo del k-NN, un algoritmo basato sulla distanza euclidea tra oggetti, i quali tendono a trovarsi vicini nello spazio delle feature se presentano caratteristiche simili.
-
-L'algoritmo calcola la distanza tra il punto da classificare e tutti i punti noti, seleziona i k più vicini e assegna la classe più frequente tra essi. Questo codice implementa il k-NN utilizzando un approccio modulare.
-
-La classe astratta Classifier definisce un'interfaccia comune, mentre la classe KNNClassifier fornisce una specifica implementazione dell'algoritmo. Il metodo train() memorizza il dataset di addestramento, mentre predict() calcola le distanze tra i punti di test e quelli di training, selezionando i più vicini per determinare la classe.
-
-Per garantire il corretto funzionamento, è presente una funzione di test test_knn_classifier(), che confronta le predizioni del modello con i valori attesi. Se le previsioni sono corrette, il test viene superato.
-
-Validation.py implementa e testa diverse strategie di validazione dei modelli di machine learning, come la validazione Holdout, K-Fold e Stratified Shuffle Split.
-
-Ogni strategia ha un comportamento diverso: la validazione Holdout separa i dati in due set, uno per l'addestramento e l'altro per il test, con un mescolamento casuale; la validazione K-Fold suddivide il dataset in k fold, eseguendo una validazione incrociata; mentre la validazione Stratified Shuffle Split preserva la distribuzione delle classi tra i due set.
-
-Un'apposita factory consente di scegliere facilmente la strategia desiderata, e la funzione di test verifica che ogni strategia funzioni correttamente su un piccolo esempio di dati.
-
-Nel file main.py l'utente interagisce con il terminale fornendo il numero di vicini (k), il metodo di valutazione e la percentuale di test.
-
-Una volta terminata l'analisi l'utente ha la possibilità di terminare l'esecuzione o ripeterla ancora. 
-
-Una volta completata, vengono salvati i risultati delle metriche in un file CSV dove possono essere visualizzati.
+Durante la valutazione, vengono calcolate diverse metriche, tra cui accuratezza, tasso di errore, sensibilità (recall), specificità e media geometrica, particolarmente utili per analizzare le prestazioni del modello, soprattutto nel caso di dataset sbilanciati. La matrice di confusione viene calcolata per ciascuna iterazione e aggregata in una matrice complessiva per fornire un quadro dettagliato delle prestazioni. Al termine della valutazione, i risultati vengono salvati in un file CSV denominato `"evaluation_results.csv"`, e l’utente riceve un riepilogo delle informazioni sulle prestazioni del modello.  
