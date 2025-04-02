@@ -102,4 +102,20 @@ class ExcelLoadStrategy(LoadStrategy):
         data = data.apply(pd.to_numeric, errors="coerce")  # Converte in valori numerici
         return data
     
-
+class SelectLoadStrategy():
+    # Funzione che seleziona la strategia di caricamento dei dati in base al formato del file
+    # Questa funzione scansiona la cartella corrente per trovare un file con estensione supportata
+    # e restituisce la strategia di caricamento appropriata
+    def select_load_strategy(file_path):
+        # Percorso directory corrente str(os.getcwd()).split('\\')[-1]+"/"+nome_file
+        if file_path.find("\"")!=-1:
+            file_path=file_path.split("\"")[1]
+        if file_path.endswith('.csv'):
+            return CSVLoadStrategy(), file_path # Restituisce la strategia per il caricamento di file CSV
+        elif file_path.endswith('.json'):
+            return JSONLoadStrategy(), file_path # Restituisce la strategia per il caricamento di file JSON
+        elif file_path.endswith('.txt'):
+            return TextLoadStrategy(), file_path # Restituisce la strategia per il caricamento di file TXT
+        elif file_path.endswith('.xlsx'):
+            return ExcelLoadStrategy(), file_path # Restituisce la strategia per il caricamento di file XLSX
+        raise FileNotFoundError("Nessun file di dataset trovato (CSV, JSON, TXT, XLSX).")
