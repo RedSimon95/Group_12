@@ -176,7 +176,6 @@ def main():
     print(avg_metrics_str) # Stampa a schermo il riepilogo dei risultati
     # Salva il riepilogo in un file txt
     with open("evaluation_results.txt", "w") as results_file:
-        # Write the string to the file
         results_file.write(avg_metrics_str)
     print(" >>> RISULTATI SALVATI IN 'evaluation_results.txt'")  # Conferma che i risultati sono stati salvati
     
