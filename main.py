@@ -55,6 +55,9 @@ def main():
         "AUC": float(0)
     }
 
+    # Inizializzo la stringa avg_metrics_str per la visualizzazione e schermo di un riepilogo dell'esecuzione corrente
+    avg_metrics_str="\n--- RIEPILPGO ESECUZIONE ---\n\nDATABASE PATH:\n"+file_path+"\n\nCLASSIFICATORE KNN:\nNumero vicini = "+str(k)+"\n"
+
     # Valutazione del modello utilizzando il metodo Holdout (splitting semplice dei dati)
     if method == "holdout":
         # Chiede la percentuale di dati da utilizzare per il test (fra 20% e 50%)
@@ -68,8 +71,8 @@ def main():
             y_pred, y_prob = knn.predict(X_test)  # Predice sui dati di test
             avg_metrics = modelevaluator.compute_metrics(y_test, y_pred, y_prob[:,1])  # Calcola le metriche di valutazione
         
-        # Creo una stringa per visualizzare i riusultati
-        avg_metrics_str="\nMETRICHE: HOLDOUT\nFILE PATH: "+file_path+"\n\n"
+        # Aggiorno la stringa per la visulizzazione dei risultati
+        avg_metrics_str=avg_metrics_str+"\nMETODO: HOLDOUT\nPercentuale di test = "+str(test_size)+"\n\nMETRICHE:\n"
 
     # Valutazione del modello utilizzando K-Fold Cross Validation
     elif method == "kfold":
@@ -109,8 +112,8 @@ def main():
             else:
                 avg_metrics[key] = np.round(avg_metrics[key]/k_folds,4)
 
-        # Creo una stringa per visualizzare i riusultati
-        avg_metrics_str="\nMETRICHE: K-FOLD\nFILE PATH: "+file_path+"\n\n"
+        # Aggiorno la stringa per la visulizzazione dei risultati
+        avg_metrics_str=avg_metrics_str+"\nMETODO: K-FOLD\nNumero folds = "+str(k_folds)+"\n\nMETRICHE:\n"
 
     # Valutazione del modello utilizzando Stratified Shuffle Split (divisione stratificata)
     elif method == "stratified":
@@ -159,8 +162,8 @@ def main():
             else:
                 avg_metrics[key] = np.round(avg_metrics[key]/n_splits,4)
         
-        # Creo una stringa per visualizzare i riusultati
-        avg_metrics_str="\nMETRICHE: STRATIFIED SHUFFLE SPLIT\nFILE PATH: "+file_path+"\n\n"
+        # Aggiorno la stringa per la visulizzazione dei risultati
+        avg_metrics_str=avg_metrics_str+"\nMETODO: STRATIFIED SHUFFLE SPLIT\nNumero splits = "+str(n_splits)+", percentuale di test = "+str(test_size)+"\n\nMETRICHE:\n"
 
     plot_confusion_matrix(avg_metrics["Confusion Matrix"])
     # Salva le metriche di valutazione in un file CSV
@@ -169,9 +172,13 @@ def main():
             avg_metrics_str=avg_metrics_str+key+": "+str("\n\t"+str(avg_metrics[key][0])+"\n\t"+str(avg_metrics[key][1])+"\n")
         else:
             avg_metrics_str=avg_metrics_str+key+": "+str(avg_metrics[key])+"\n"
-    df_metrics = pd.DataFrame([avg_metrics_str])  # Crea un DataFrame con le metriche
-    df_metrics.to_csv("evaluation_results.csv", index=False)  # Salva le metriche in un file CSV
-    print("\n >>> RISULTATI SALVATI IN 'evaluation_results.csv'")  # Conferma che i risultati sono stati salvati
+    
+    print(avg_metrics_str) # Stampa a schermo il riepilogo dei risultati
+    # Salva il riepilogo in un file txt
+    with open("evaluation_results.txt", "w") as results_file:
+        # Write the string to the file
+        results_file.write(avg_metrics_str)
+    print(" >>> RISULTATI SALVATI IN 'evaluation_results.txt'")  # Conferma che i risultati sono stati salvati
     
 if __name__ == "__main__":
     main()  # Esegue la funzione principale
