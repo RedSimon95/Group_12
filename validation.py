@@ -3,20 +3,25 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from load_strategy import CSVLoadStrategy
-from dataprocessing import DataProcessor  # Import per il preprocessing
-from model import KNNClassifier # Import per il modello KNN
+from dataprocessing import DataProcessor
+from model import KNNClassifier
 import matplotlib.pyplot as plt
 
 class ModelEvaluator:
+
     """
-    Classe per la valutazione del modello KNN utilizzando Holdout, K-Fold Cross Validation e Stratified Shuffle Split.
+    Classe per la valutazione del modello KNN utilizzando Holdout, K-Fold Cross Validation e 
+    Stratified Shuffle Split e per il calcolo delle metriche.
     """
-    def __init__(self, model, X, y):
+
+    def __init__(self, model: KNNClassifier, X: list, y: list):
         """
         Inizializza l'evaluator con il modello e i dati.
-        :param model: Modello KNN addestrabile.
-        :param X: Features.
-        :param y: Target.
+        Input:
+            model   [model.KNNClassifier]:  modello KNN addestrabile
+            X       [list]:                 array delle features
+            y       [list di {2,4}]:        array delle classi reali; i metodi della classe utilizzano valori {2,4} 
+                                            delle classi per indicare False o True rispettivamente
         """
         # Inizializza le variabili per il modello, le features, il target e per il logging
         self.model = model
@@ -25,32 +30,70 @@ class ModelEvaluator:
         self.logs = []  # Struttura per tenere traccia dei risultati
         self.global_conf_matrix = np.zeros((2, 2), dtype=int)  # Matrice di confusione globale
 
-    def compute_confusion_matrix(self, y_true, y_pred):
-        """Calcola la matrice di confusione."""
-        # Calcolo dei veri positivi (TP): casi in cui il valore reale e la predizione sono entrambi 4
+
+
+    def compute_confusion_matrix(self, y_true: list, y_pred: list):
+        """
+        Calcola la matrice di confusione dati i valori delle classi, reali e predetti dal modello KNN.
+        I valori accettati per le classi sono 2 (False) e 4 (True)
+        Input:
+            y_true      [list di {2,4}]:    array delle classi reale; ammette valori {2,4}
+            y_pred      [list di {2,4}]:    array delle classi predetto dal modello KNN; ammette valori {2,4}
+        Output:
+            conf_matrix [np.array]:         matrice di confusione
+        """
+        # Calcolo dei veri positivi (TP): casi in cui il valore reale e la predizione sono entrambi 4 (Positivi)
         tp = np.sum((y_true == 4) & (y_pred == 4))
-        # Calcolo dei veri negativi (TN): casi in cui il valore reale e la predizione sono entrambi 2
+        # Calcolo dei veri negativi (TN): casi in cui il valore reale e la predizione sono entrambi 2 (Negativi)
         tn = np.sum((y_true == 2) & (y_pred == 2))
-        # Calcolo dei falsi positivi (FP): casi in cui il valore reale è 2 ma la predizione è 4
+        # Calcolo dei falsi positivi (FP): casi in cui il valore reale è 2 (Negativo) ma la predizione è 4 (Positivo)
         fp = np.sum((y_true == 2) & (y_pred == 4))
-        # Calcolo dei falsi negativi (FN): casi in cui il valore reale è 4 ma la predizione è 2
+        # Calcolo dei falsi negativi (FN): casi in cui il valore reale è 4 (Positivo) ma la predizione è 2 (Negativo)
         fn = np.sum((y_true == 4) & (y_pred == 2))
         
         # Restituisce la matrice di confusione
-        return np.array([[tn, fp],[fn, tp]])
+        conf_matrix=np.array([[tn, fp],[fn, tp]])
 
-    def compute_metrics(self, y_true, y_pred, y_prob):
+        return conf_matrix
+    
 
-        # Per prevenire errori, trasforma gli ingressi in array numpy e arrotonda i valori di probabilità al sesto decimale 
+
+    def compute_metrics(self, y_true: list, y_pred: list, y_prob: list):
+        """
+        Dati in ingresso i valori delle classi reali, predetti dal modello di KNN e di probabilità 
+        (probabilità nell'intervallo [0,1] che un valore appartenga alla classe True, secondo la valutazione 
+        del modello KNN).
+        I valori accettati per le classi sono 2 (False) e 4 (True).
+        Input:
+            y_true  [list di {2,4}]:    array delle classi reale; ammette valori {2,4}
+            y_pred  [list di {2,4}]:    array delle classi predetto dal modello KNN; ammette valori {2,4}
+            y_prob  [list di float]:    array delle probabilità che ogni elemento sia True (appartenga alla classe 4)
+                                        secondo la predizione del modello KNN; ammette valori nell'intervallo [0,1]
+        Output:
+            metrics [dict]:             dizionario contenente i valori delle metriche calcolate rispetto ai valori 
+                                        in input. Le metriche sono: "Confusion Matrix" [np.array], "Accuracy" 
+                                        [float], "Error Rate" [float], "Sensitivity (Recall)" [float], "Specificity"
+                                        [float], "Geometric Mean" [float], "AUC" [float]. 
+                                        NOTA: i nomi riportati coincidono con le chiavi del dizionario
+        
+        
+        """
+
+        # Per prevenire errori, trasforma gli ingressi in array numpy e arrotonda i valori di probabilità al sesto 
+        # decimale 
         y_true=np.array(y_true)
         y_pred=np.array(y_pred)
         y_prob_rounded=np.array([round(num, 6) for num in y_prob])
 
-        """Calcola le metriche di valutazione."""
+        """Confusion Matrix"""
+
         # Calcola la matrice di confusione
         confusion_matrix = self.compute_confusion_matrix(y_true, y_pred)
+        # Ricava dalla matrice True Negative, False Positive, False Negative, True Positive rispettivamente
         tn, fp, fn, tp = confusion_matrix.ravel()
-        
+
+        """Accuracy, Error Rate, Sensitivity (Recall), Specificity, Geometric Mean"""
+
         # Accuratezza: proporzione di previsioni corrette rispetto al totale dei campioni
         accuracy = (tp + tn) / len(y_true)
         # Tasso di errore: complemento dell'accuratezza
@@ -62,25 +105,29 @@ class ModelEvaluator:
         # Media geometrica della sensibilità e specificità, utile per dataset sbilanciati
         geometric_mean = np.sqrt(sensitivity * specificity)
 
-        """Calcola il valore AUC"""
+        """AUC"""
 
-        # Divide l'intervallo [0,1] in 100 parti, arrotonda i valori ottenuti al sesto decimale e ordina i valori in senso decrescente (ai fini dell'utilizzo di trapezoid)
+        # Divide l'intervallo [0,1] in 100 parti, arrotonda i valori ottenuti al sesto decimale e ordina i valori 
+        # in senso decrescente (ai fini dell'utilizzo di trapezoid)
         thresholds=np.linspace(0, 1, 100)
         thresholds_rounded=np.sort([round(num, 6) for num in thresholds])[::-1]
         # Inizializza le liste di True Positive Rate (tpr_values) e False Positive Rate (fpr_values)
         tpr_values = []
         fpr_values = []
 
+        # Per ogni threshold, calcola il valore di True Positive Rate e False Positive Rate, registrando i valori 
+        # in due array
         for threshold in thresholds_rounded:
 
-            # Calcola la classe di apparteneza sulla base del threshold corrente (la classe è 0 se negativo, 1 se positivo)
+            # Calcola la classe di apparteneza sulla base del threshold corrente (la classe è 0 se negativo, 
+            # 1 se positivo)
             predicted_lables_zo = (y_prob_rounded >= threshold)
-            # Converte le classi 0 e 1 in 2 e 4
+            # Converte le classi 0 e 1 in 2 e 4, come richieste dalla classe
             predicted_labels=np.array(2*pow(2,predicted_lables_zo.astype(int)))
             # Calcola la confusion matrix per il threshold corrente per ottenerne i valori al suo interno
             tn, fp, fn, tp = self.compute_confusion_matrix(y_true, predicted_labels).ravel()
             
-            # Calculate TPR and FPR
+            # Calcola TPR e FPR
             if tp==0:
                 tpr=0
             else:
@@ -93,19 +140,20 @@ class ModelEvaluator:
             tpr_values.append(tpr)
             fpr_values.append(fpr)
 
-        """
         # Grfica la ROC curve
+        """
         plt.plot(fpr_values, tpr_values, marker='.')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.title('ROC Curve')
         plt.show()
         """
-        # Calcola l'area sottesa alla ROC Curve per ottenere l'AUC
+
+        # Calcola l'area sottesa alla ROC Curve (AUC, Area Under Curve)
         auc=np.trapezoid(tpr_values, fpr_values)
 
-        # Restituisce un dizionario con tutte le metriche calcolate
-        return {
+        # Salva le metriche calcolate in un dizionario e lo restituisce in uscita
+        metrics={
             "Confusion Matrix": confusion_matrix,
             "Accuracy": f"{accuracy:.4f}",
             "Error Rate": f"{error_rate:.4f}",
@@ -115,11 +163,22 @@ class ModelEvaluator:
             "AUC": f"{auc:.4f}"
         }
 
+        return metrics
+    
+
+
     def holdout(self, test_size=0.2):
         """
         Suddivide il dataset in training e test set secondo il metodo Holdout.
-        :param test_size: Percentuale di dati da destinare al test set (default = 0.2).
+        Input:
+            test_size           [float]:            percentuale di dati da destinare al test set (default=0.2)
+        Output:
+            X[train_indices]    [list]:             porzione di features assegata al training
+            X[test_indices]     [list]:             porzione di features assegnata al test
+            y[train_indices]    [list di {2,4}]:    porzione di target assegnata al training
+            y[test_indices]     [list di {2,4}]:    porzione di target assegnata al test
         """
+
         # Mescola gli indici dei dati per garantire la casualità
         indices = np.random.permutation(len(self.X))  
         
@@ -127,24 +186,41 @@ class ModelEvaluator:
         split = int(len(self.X) * (1-test_size)) 
         
         # Suddivide gli indici dei dati in due gruppi: uno per il training e uno per il test
-        train_indices, test_indices = indices[:split], indices[split:]  
+        train_indices, test_indices = indices[:split], indices[split:]
+
         return self.X[train_indices], self.X[test_indices], self.y[train_indices], self.y[test_indices]
 
     def k_fold_cross_validation(self, k=5):
         """
-        Esegue la validazione incrociata K-Fold.
-        :param k: Numero di fold per la cross-validation (default = 5).
+        Ricava gli indici degli elementi suddividendo il dataset in k folds, secondo il metodo K-Fold.
+        Input:
+            k       [int]:                  numero di folds per la cross-validation (default=5)
+        Output:
+            folds   [list di np.array]:     lista contenente k array, ognuno dei quali contiene gli indici degli 
+                                            elementi relativi al k-esimo fold
         """
+
         # Mescola gli indici dei dati per garantire la casualità prima di suddividere in fold
         indices = np.random.permutation(len(self.X))  
         
         # Suddivide gli indici in k parti (fold)
-        folds = np.array_split(indices, k)  
-        return folds  # Restituisce gli ultimi risultati
+        folds = np.array_split(indices, k)
+
+        return folds
+    
+
 
     def stratified_shuffle_split(self, test_size=0.2, n_splits=5):
         """
-        Implementazione manuale di Stratified Shuffle Split usando solo numpy e pandas.
+        Ricava gli indici degli elementi suddividendo il dataset in n_splits splits, secondo il metodo Stratified 
+        Shuffle Split. Ogni spit viene poi diviso in indici di training e test secondo la percentuale indicata da
+        test_size.
+        Input:
+            test_size   [float]:                percentuale di indici assegnati al test per ogni split (default=0.2)
+            n_splits    [int]:                  numero di splits per la divisione del dataset (default=5)
+        Output:
+            splits      [list di np.array]:     lista contenente n_splits array, ognuno dei quali contiene gli 
+                                                indici degli elementi relativi al n_splits-esimo split
         """
         # Calcola la distribuzione delle classi nel dataset
         unique_classes, class_counts = np.unique(self.y, return_counts=True)
@@ -170,9 +246,19 @@ class ModelEvaluator:
             # Salviamo le suddivisioni (training e test) per ciascun split
             splits.append((np.array(train_indices), np.array(test_indices)))
         
-        return splits  # Restituisce gli ultimi risultati
+        return splits
+    
+
+
+"""FUNZIONI DI TEST PER LA CLASSE ModelEvaluator"""
+
+
 
 def validation_test():
+    """
+    Inizializza un oggetto per la classe ModelEvaluator e esegue i metodi ModelEvaluator.holdout(),
+    ModelEvaluator.k_fold_cross_validation(), ModelEvaluator.stratified_shuffle_split()
+    """
     # Caricamento e preprocessing del dataset
     # Viene caricato il dataset tramite la classe DataProcessor che gestisce il caricamento e la preparazione dei dati
 
@@ -193,7 +279,14 @@ def validation_test():
     model_evaluator.k_fold_cross_validation()  # Esegui la valutazione tramite K-Fold Cross Validation
     model_evaluator.stratified_shuffle_split()  # Esegui la valutazione tramite Stratified Shuffle Split
 
+
+
 def compute_metrics_test():
+    """
+    Calcola le metriche su un piccolo dataset utilizzando il metodo ModelEvaluator.compute_metrics() e le confronta
+    con quelle corrette. I risutati del test vengono mostrati a schermo.
+    """
+
     # Crea un modello knn per inizializzare im modo generico model_evaluator
     knn_model = KNNClassifier(3)
     model_evaluator = ModelEvaluator(knn_model, [0,0,0,0], [0,0,0,0])
@@ -251,7 +344,9 @@ def compute_metrics_test():
 
     else:
         print("ERRORE: Le chiavi del dizionario generato e di quello di test non corrispondono!\n")
-        
+
+
+
     
 # ------ BLOCCO DI TEST ------
 if __name__=='__main__':
