@@ -6,21 +6,21 @@ from load_strategy import LoadStrategy, CSVLoadStrategy, JSONLoadStrategy, TextL
 # Classe principale per il preprocessing del dataset
 class DataProcessor:
     """
-    Classe per il preprocessing del dataset: gestione dei valori mancanti, normalizzazione 
-    e salvataggio del file elaborato.
+    Classe che si occupa del preprocessing del dataset, inclusa la gestione dei valori mancanti,
+    la normalizzazione delle feature numeriche e il salvataggio del dataset trasformato.
+    Utilizza il pattern Strategy per il caricamento flessibile da diversi formati (CSV, JSON, TXT, XLSX).
     """
     
     def __init__(self, file_path, load_strategy, output_features="processed_features.csv", output_target="processed_target.csv"):
         """
-        Inizializza la classe DataProcessor.
+        Inizializza l'istanza del DataProcessor con il percorso del file da caricare, la strategia di caricamento 
+        dei dati e i nomi dei file di output.
         
-        Input:
-            file_path (str): indica il percorso del file che contiene il dataset da elaborare
-            load_strategy (LoadStrategy): strategia di caricamento dei dati
-            output_features (str): nome del file CSV dove vengono salvate le features preprocessate
-            output_target (str): nome del file CSV dove viene salvato il target preprocessato
-        Output:
-            None
+        Args:
+            file_path (str): Percorso del dataset originale.
+            load_strategy (LoadStrategy): Strategia per il caricamento (design pattern Strategy).
+            output_features (str): Nome del file per salvare le feature preprocessate.
+            output_target (str): Nome del file per salvare il target preprocessato.
         """
         self.file_path = file_path
         self.load_strategy = load_strategy
@@ -32,44 +32,44 @@ class DataProcessor:
 
     def process(self):
         """
-        Processa i dati del file fornito in ingresso.
+        Esegue l'intero processo di preprocessing:
+        - Caricamento del dataset con la strategia scelta.
+        - Gestione dei valori mancanti.
+        - Pulizia e separazione tra feature e target.
+        - Normalizzazione delle feature numeriche.
+        - Salvataggio dei dati preprocessati su file CSV.
 
-        Input:
-            None
-        Output:
-            self.features (array bidimensionale di float): dataset ripulito e normalizzato senza la colonna delle classi 
-            self.target (array di float): colonna delle classi
+        Returns:
+            tuple: (features, target) entrambi come DataFrame pandas
         """
-
-        """Carica il dataset utilizzando la strategia specificata."""
+        
+        # Carica il dataset utilizzando l'oggetto load_strategy (design pattern per supportare diversi formati di file)
         self.data = self.load_strategy.load(self.file_path)
 
-   
-        """Gestisce i valori mancanti: elimina righe con target NaN e riempie le feature con la media."""
-        self.data.dropna(subset=['classtype_v1'], inplace=True)  # Rimuove righe con target NaN
+        # Rimuove le righe in cui il target (classtype_v1) è mancante, poiché non possono essere utilizzate per il training
+        self.data.dropna(subset=['classtype_v1'], inplace=True)
+
+        # Per ogni colonna (eccetto il target), sostituisce i valori NaN con la media della colonna
         for column in self.data.columns:
             if self.data[column].isnull().sum() > 0 and column != 'classtype_v1':
-                self.data[column].fillna(self.data[column].mean(), inplace=True)  # Sostituisce con la media
+                self.data[column].fillna(self.data[column].mean(), inplace=True)
 
-        # Rimuove le colonne 1, 3 e 9
+        # Rimuove le colonne di indice 0, 2 e 8 (basato su indice, non nome)
+        # Spesso utile per eliminare colonne identificative o irrilevanti
         self.data.drop(self.data.columns[[0, 2, 8]], axis=1, inplace=True)
     
-        """Separa le features dal target e rimuove colonne non necessarie."""
+        # Separa il target (classtype_v1) dalle feature
+        # Tenta anche di rimuovere 'Sample code number' se presente, in quanto probabilmente identificativo
         self.features = self.data.drop(columns=['Sample code number', 'classtype_v1'], errors='ignore')
         self.target = self.data[['classtype_v1']]
 
-    
-        """Normalizza le features tra 0 e 1."""
+        # Normalizza tutte le feature in un range [0, 1] 
         self.features = (self.features - self.features.min()) / (self.features.max() - self.features.min())
 
-    
-        """Salva le features e il target in file CSV separati."""
+        # Salva il dataset trasformato in due file CSV: uno per le feature e uno per il target
         self.features.to_csv(self.output_features, index=False)
         self.target.to_csv(self.output_target, index=False)
         print(f"Features salvate in {self.output_features}")
         print(f"Target salvato in {self.output_target}")
 
-    
         return self.features, self.target
-    
-
